@@ -3,8 +3,6 @@ import "./style.css";
 // 引入内容脚本上下文模块
 import { ContentScriptContext } from "wxt/client";
 
-
-
 // 定义内容脚本的主入口
 export default defineContentScript({
   // 设置"registration"为runtime，这样这个文件就不会在manifest中列出
@@ -26,8 +24,6 @@ export default defineContentScript({
   },
 });
 
-
-
 /**
  * 创建用户界面
  * @param ctx 内容脚本上下文
@@ -35,148 +31,154 @@ export default defineContentScript({
  */
 async function createUi(ctx: ContentScriptContext) {
   // 这里我们假设你已经有了一个特定的XPath表达式来定位目标元素
-  const targetXPath1 = "//*[@id=':1s']/div[1]/div[2]/div[3]"
-  const targetXPath = "//*[contains(@id, ':') and string-length(@id) = 3]/div[1]/div[2]/div[3]";
-  const targetElement = locateElementByXPath(targetXPath); 
-  if (targetElement instanceof HTMLElement) { 
+  const sourceXPath =
+    "//*[contains(@id, ':') and string-length(@id) = 3]/div[1]/div[2]/div[3]";
+  const targetElement = locateElementByXPath(sourceXPath);
+  if (targetElement instanceof HTMLElement) {
     const targetText = targetElement.textContent;
 
-// 定义要post的数据
-interface RequestConfig {
-  retries?: number;
-  retryDelay?: number;
-}
-
-async function fetchWithRetry(url: string, options: RequestInit = {}, config: RequestConfig = {}) {
-  const { retries = 3, retryDelay = 1000 } = config;
-  
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url, options);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, retryDelay * (2 ** i)));
+    // 定义要post的数据
+    interface RequestConfig {
+      retries?: number;
+      retryDelay?: number;
     }
-  }
-}
 
-function updateUiStatus(status: 'loading' | 'success' | 'error' | 'retrying', message: string) {
-  const container = document.querySelector('.pod-ui-container');
-  if (!container) return;
+    async function fetchWithRetry(
+      url: string,
+      options: RequestInit = {},
+      config: RequestConfig = {}
+    ) {
+      const { retries = 3, retryDelay = 1000 } = config;
 
-  // 清除旧内容
-  container.innerHTML = '';
-
-  // 创建新状态元素
-  const statusElement = document.createElement('div');
-  statusElement.className = `pod-ui-status pod-ui-${status}`;
-  statusElement.textContent = message;
-
-  container.appendChild(statusElement);
-}
-
-const postData = { emailContent: targetText };
-console.log(postData);
-
-async function postDatas() {
-  try {
-    updateUiStatus('loading', '正在发送邮件...');
-    
-    let response = await fetchWithRetry('https://mail-pod.section9lab.workers.dev/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(postData),
-    }, { retries: 3, retryDelay: 1000 });
-
-    updateUiStatus('success', '邮件发送成功');
-
-    console.log(response)
-    const postPath1 = "//*[@id=':4']/div"
-    const postPath = "//*[@id=':1']/div/div[2]/div/div[2]/div[1]/div/div[2]/div[2]"
-    const postElement = locateElementByXPath(postPath); 
-    console.log(postElement)
-    
-    // 处理响应数据
-    if (postElement instanceof HTMLElement) { 
-      const fixedDivId = "response-display-div";
-  
-      // Check if the div already exists
-      let newDiv = document.getElementById(fixedDivId);
-      
-      if (!newDiv) {
-        // Create a new div if it doesn't exist
-        newDiv = document.createElement("div");
-        newDiv.id = fixedDivId;
-        
-        // Insert the new div after the target element
-        if (postElement.parentNode) {
-          //postElement.parentNode.insertBefore(newDiv, postElement.nextSibling);
-          postElement.parentNode.appendChild(newDiv);
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return await response.json();
+        } catch (error) {
+          if (i === retries - 1) throw error;
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryDelay * 2 ** i)
+          );
         }
       }
-      //newDiv.textContent = response;
+    }
 
-      // Format the response to preserve line breaks
-      const formattedResponse = formatResponseWithLineBreaks(response);
-      
-      // Update the div content with properly formatted text
-      newDiv.innerHTML = formattedResponse;
-  
-      // Style the div based on its content
-      styleBasedOnContent(newDiv, response);
-      
-      // Insert the new div after the target element (not inside it)
-      if (postElement.parentNode) {
-        postElement.parentNode.insertBefore(newDiv, postElement.nextSibling);
+    function updateUiStatus(
+      status: "loading" | "success" | "error" | "retrying",
+      message: string
+    ) {
+      const container = document.querySelector(".pod-ui-container");
+      if (!container) return;
+
+      // 清除旧内容
+      container.innerHTML = "";
+
+      // 创建新状态元素
+      const statusElement = document.createElement("div");
+      statusElement.className = `pod-ui-status pod-ui-${status}`;
+      statusElement.textContent = message;
+
+      container.appendChild(statusElement);
+    }
+
+    const postData = { emailContent: targetText };
+    console.log(postData);
+
+    async function postDatas() {
+      try {
+        updateUiStatus("loading", "正在发送邮件...");
+
+        let response = await fetchWithRetry(
+          "https://mail-pod.section9lab.workers.dev/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(postData),
+          },
+          { retries: 3, retryDelay: 1000 }
+        );
+        updateUiStatus("success", "邮件发送成功");
+        console.log(response);
+        const destXPath ="//*[@id=':1']/div/div[2]/div/div[2]/div[1]";
+          //"//*[@id=':1']/div/div[2]/div/div[2]/div[1]/div/div[2]/div[2]";
+        const postElement = locateElementByXPath(destXPath);
+        console.log(postElement);
+        // 处理响应数据
+        if (postElement instanceof HTMLElement) {
+          const fixedDivId = "response-display-div";
+          // Check if the div already exists
+          let newDiv = document.getElementById(fixedDivId);
+          if (!newDiv) {
+            // Create a new div if it doesn't exist
+            newDiv = document.createElement("div");
+            newDiv.id = fixedDivId;
+            // Insert the new div after the target element
+            if (postElement.parentNode) {
+              //postElement.parentNode.insertBefore(newDiv, postElement.nextSibling);
+              postElement.parentNode.appendChild(newDiv);
+            }
+          }
+          //newDiv.textContent = response;
+          // Format the response to preserve line breaks
+          const formattedResponse = formatResponseWithLineBreaks(response);
+          // Update the div content with properly formatted text
+          newDiv.innerHTML = formattedResponse;
+          // Style the div based on its content
+          styleBasedOnContent(newDiv, response);
+          // Insert the new div after the target element (not inside it)
+          if (postElement.parentNode) {
+            postElement.parentNode.insertBefore(
+              newDiv,
+              postElement.nextSibling
+            );
+          }
+          //postElement.appendChild(newDiv);
+          console.log(postElement);
+        } else {
+          console.error("Target element not found");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        updateUiStatus("error", "邮件发送失败。点击重试");
+
+        // 添加重试按钮
+        const container = document.querySelector(".pod-ui-container");
+        if (container) {
+          const retryButton = document.createElement("button");
+          retryButton.textContent = "重试";
+          retryButton.onclick = postDatas;
+          container.appendChild(retryButton);
+        }
       }
-
-      //postElement.appendChild(newDiv);
-      console.log(postElement)
-    } else {
-      console.error("Target element not found");
     }
-    
-  } catch (error) {
-    console.error('Error:', error);
-    updateUiStatus('error', '邮件发送失败。点击重试');
-    
-    // 添加重试按钮
-    const container = document.querySelector('.pod-ui-container');
-    if (container) {
-      const retryButton = document.createElement('button');
-      retryButton.textContent = '重试';
-      retryButton.onclick = postDatas;
-      container.appendChild(retryButton);
-    }
-  }
-}
     postDatas();
   }
 
   function formatResponseWithLineBreaks(response) {
     // Convert to string if it's not already
-    let text = typeof response === 'string' ? response : JSON.stringify(response, null, 2);
-    
+    let text =
+      typeof response === "string"
+        ? response
+        : JSON.stringify(response, null, 2);
+    text = text.trim();
     // Replace newlines with <br> tags
-    text = text.replace(/\n/g, '<br>');
-    
+    text = text.replace(/\n/g, "<br>");
     // Preserve spaces
-    text = text.replace(/  /g, '&nbsp;&nbsp;');
-    
+    text = text.replace(/  /g, "&nbsp;&nbsp;");
     return text;
   }
-  
+
   function styleBasedOnContent(div, content) {
     // Add some basic styling
     div.style.padding = "10px";
     div.style.margin = "10px 0";
     div.style.borderRadius = "5px";
-    
+
     // Convert content to string for analysis if it's not already
-    const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
-    
+    const contentStr =
+      typeof content === "string" ? content : JSON.stringify(content);
+
     // Determine style based on content
     if (contentStr.includes("error") || contentStr.includes("失败")) {
       // Error styling
@@ -205,14 +207,42 @@ async function postDatas() {
     append: "before",
     // 当挂载完成时调用此回调函数
     onMount(container) {
-      container.className = 'pod-ui-container';
-      const app = document.createElement("h");
-      app.textContent = "Test Pod is running";
-      container.append(app);
+      container.className = "pod-ui-container";
+      const targetXPath = "//*[@id=':1']/div/div[2]/div/div[2]/div[1]";
+      const targetElement = locateElementByXPath(targetXPath);
+
+        if (targetElement instanceof HTMLElement) {
+          const fixedDivId = "response-display-div";
+          // Check if the div already exists
+          let newDiv = document.getElementById(fixedDivId);
+          if (!newDiv) {
+            // Create a new div if it doesn't exist
+            newDiv = document.createElement("div");
+            newDiv.id = fixedDivId;
+            // Insert the new div after the target element
+            if (targetElement.parentNode) {
+              //postElement.parentNode.insertBefore(newDiv, postElement.nextSibling);
+              targetElement.parentNode.appendChild(newDiv);
+            }
+          }
+          //newDiv.textContent = response;
+          // Format the response to preserve line breaks
+          const formattedResponse = formatResponseWithLineBreaks("Loading ......");
+          // Update the div content with properly formatted text
+          newDiv.innerHTML = formattedResponse;
+          // Style the div based on its content
+          styleBasedOnContent(newDiv, "Loading ......");
+          // Insert the new div after the target element (not inside it)
+          if (targetElement.parentNode) {
+            targetElement.parentNode.insertBefore(
+              newDiv,
+              targetElement.nextSibling
+            );
+          }
+      }
     },
   });
 }
-
 
 function locateElementByXPath(targetXPath: string): Node | null {
   const result = document.evaluate(
